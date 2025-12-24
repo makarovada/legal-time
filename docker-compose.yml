@@ -7,6 +7,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: secret
       POSTGRES_DB: legaltime
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256 --auth-local=scram-sha-256"  # <-- эта строка решает всё
     ports:
       - "5432:5432"
     volumes:

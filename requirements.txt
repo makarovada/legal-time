@@ -1,0 +1,33 @@
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+sqlalchemy==2.0.35
+alembic==1.13.2
+psycopg2-binary==2.9.9
+pydantic==2.9.2
+python-jose[cryptography]==3.3.0  # для JWT
+passlib[bcrypt]==1.7.4           # хэширование паролей
+python-multipart==0.0.9          # для форм (если понадобится)
+
+# Google интеграция
+google-api-python-client==2.149.0
+google-auth-oauthlib==1.2.1
+google-auth-httplib2==0.2.0
+
+# Celery + Redis
+celery==5.4.0
+redis==5.0.8
+
+# Логи и безопасность
+loguru==0.7.2
+cryptography==43.0.1             # для Fernet шифрования токенов
+
+# Тестирование
+pytest==8.3.3
+pytest-cov==5.0.0
+httpx==0.27.2
+pytest-asyncio==0.24.0
+
+# Дополнительно полезное
+python-dotenv==1.0.1             # загрузка .env
+tenacity==9.0.0                   # retry для API вызовов
+pytz==2024.1                     # работа с часовыми поясами

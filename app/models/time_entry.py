@@ -20,5 +20,6 @@ class TimeEntry(BaseModel):
     date = Column(Date, nullable=False)
     status = Column(Enum(TimeEntryStatus), default=TimeEntryStatus.draft)
 
+    # Строковая ссылка
     employee = relationship("Employee", back_populates="time_entries")
     matter = relationship("Matter", back_populates="time_entries")

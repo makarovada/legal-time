@@ -16,4 +16,5 @@ class Employee(BaseModel):
     password_hash = Column(String, nullable=False)
     role = Column(Enum(EmployeeRole), nullable=False, default=EmployeeRole.lawyer)
 
+    # Строковая ссылка — SQLAlchemy найдёт класс позже
     time_entries = relationship("TimeEntry", back_populates="employee")

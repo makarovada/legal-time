@@ -9,7 +9,7 @@ services:
       POSTGRES_DB: legaltime
       POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256 --auth-local=scram-sha-256"  # <-- эта строка решает всё
     ports:
-      - "5432:5432"
+      - "5455:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
 

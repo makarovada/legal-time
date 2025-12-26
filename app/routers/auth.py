@@ -1,47 +1,55 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi import Body
-from fastapi.security import OAuth2PasswordRequestForm
+from fastapi import APIRouter, Depends, HTTPException, status, Response, Request
+from fastapi.responses import HTMLResponse
+from fastapi.security import OAuth2PasswordRequestFormStrict
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.utils.auth import authenticate_user, create_access_token, get_password_hash
 from app.models.employee import Employee
-from app.schemas.auth import Token
-from datetime import timedelta
+from app.models.client import Client
+from app.utils.auth import authenticate_user, create_access_token
 from app.config import settings
-from fastapi.security import OAuth2PasswordRequestFormStrict  # <-- новый импорт
-
+from datetime import timedelta
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-
-@router.post("/login", response_model=Token)
+@router.post("/login", response_class=HTMLResponse)
 def login(
-    form_data: OAuth2PasswordRequestFormStrict = Depends(),  # <-- Strict версия
+    response: Response,
+    request: Request,
+    form_data: OAuth2PasswordRequestFormStrict = Depends(),
     db: Session = Depends(get_db)
 ):
     user = authenticate_user(db, form_data.username, form_data.password)
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        return templates.TemplateResponse("login.html", {
+            "request": request,
+            "error": "Неверный email или пароль"
+        })
+
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": user.email, "role": user.role},
         expires_delta=access_token_expires
     )
-    return {"access_token": access_token, "token_type": "bearer"}
 
-# Для создания первого админа (одноразово)
-@router.post("/create-admin")
-def create_admin(email: str = Body(..., embed=True), password: str = Body(..., embed=True), db: Session = Depends(get_db)):
-    existing = db.query(Employee).filter(Employee.role == "admin").first()
-    if existing:
-        raise HTTPException(status_code=400, detail="Admin already exists")
-    hashed = get_password_hash(password)
-    admin = Employee(email=email, password_hash=hashed, name="Admin", role="admin")
-    db.add(admin)
-    db.commit()
-    db.refresh(admin)
-    return {"message": "Admin created"}
+    # Устанавливаем HttpOnly cookie
+    response.set_cookie(
+        key="access_token",
+        value=f"Bearer {access_token}",
+        httponly=True,
+        max_age=3600 * 24,  # 24 часа
+        expires=3600 * 24,
+        secure=False,  # для localhost
+        samesite="lax"
+    )
+
+    clients = db.query(Client).all()
+    return templates.TemplateResponse("dashboard.html", {
+        "request": request,
+        "current_user": user,
+        "clients": clients
+    })
+
+@router.get("/logout", response_class=HTMLResponse)
+def logout(response: Response, request: Request):
+    response.delete_cookie(key="access_token")
+    return templates.TemplateResponse("login.html", {"request": request})

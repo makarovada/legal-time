@@ -5,6 +5,9 @@ from app.crud.time_entry import time_entry as crud_time_entry
 from app.schemas.time_entry import TimeEntry, TimeEntryCreate
 from app.utils.auth import get_current_user
 from app.models.employee import Employee
+from googleapiclient.discovery import build
+from app.utils.google import get_google_credentials
+from datetime import datetime, timedelta
 
 router = APIRouter(prefix="/time-entries", tags=["time-entries"])
 
@@ -102,3 +105,47 @@ def approve_time_entry(
     db.commit()
     db.refresh(entry)
     return entry
+
+@router.get("/import-from-calendar")
+def import_from_calendar(
+    start_date: str,  # "2025-12-25"
+    db: Session = Depends(get_db),
+    current_user: Employee = Depends(get_current_user)
+):
+    creds = get_google_credentials(db, current_user.id)
+    if not creds:
+        raise HTTPException(status_code=400, detail="Google Calendar not connected")
+
+    service = build("calendar", "v3", credentials=creds)
+
+    start = datetime.fromisoformat(start_date).isoformat() + "Z"
+    end = (datetime.fromisoformat(start_date) + timedelta(days=1)).isoformat() + "Z"
+
+    events_result = service.events().list(
+        calendarId="primary", timeMin=start, timeMax=end, singleEvents=True, orderBy="startTime"
+    ).execute()
+
+    events = events_result.get("items", [])
+
+    imported = []
+    for event in events:
+        if event.get("status") == "cancelled":
+            continue
+
+        start_time = event["start"].get("dateTime", event["start"].get("date"))
+        end_time = event["end"].get("dateTime", event["end"].get("date"))
+
+        # Простое предзаполнение — можно улучшить
+        hours = 1.0  # потом рассчитывать по длительности
+        description = event.get("summary", "") + " " + event.get("location", "")
+
+        time_entry_obj = TimeEntryCreate(
+            hours=hours,
+            description=description,
+            date=start_date,
+            matter_id=1,  # потом автопоиск по коду дела
+            activity_type_id=1  # "Консультация" или по ключевым словам
+        )
+        imported.append(create_time_entry(time_entry_obj, db, current_user))
+
+    return {"imported": len(imported), "details": imported}

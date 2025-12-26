@@ -1,15 +1,51 @@
 <!DOCTYPE html>
-<html lang="ru" class="h-full">
+<html lang="ru" class="scroll-smooth" {% if dark_mode %}data-theme="dark" {% endif %}>
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>LegalTime {% block title %}{% endblock %}</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+  <title>{% block title %}LegalTime{% endblock %}</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@3.4.0/dist/tailwind.min.css" rel="stylesheet">
+  <!-- Alpine.js для выпадашек и мобильного меню -->
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <!-- HTMX -->
+  <script src="https://unpkg.com/htmx.org@2.0.0"></script>
+  {% block head_extra %}{% endblock %}
 </head>
-<body class="h-full bg-gray-50">
-  <div id="main-content">
-    {% block content %}{% endblock %}
+
+<body class="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 min-h-screen flex flex-col">
+
+  <!-- Topbar -->
+  {% include "components/topbar.html" %}
+
+  <div class="flex flex-1">
+    <!-- Sidebar (desktop) -->
+    {% include "components/sidebar.html" %}
+
+    <!-- Main content -->
+    <main class="flex-1 overflow-auto p-6">
+      {% include "components/flash.html" %}
+      {% block content %}{% endblock %}
+    </main>
   </div>
+
+  <!-- Mobile sidebar overlay / drawer (управляется Alpine) -->
+  <div x-data="{ open: false }" x-show="open" class="fixed inset-0 z-40 lg:hidden" @click="open = false">
+    <div class="absolute inset-0 bg-black opacity-50" @click="open = false"></div>
+    <aside class="absolute inset-y-0 left-0 w-64 bg-white dark:bg-gray-800 transform transition-transform"
+      :class="open ? 'translate-x-0' : '-translate-x-full'">
+      {% include "components/sidebar.html" %}
+    </aside>
+  </div>
+
+  <script>
+    // Тёмная тема (можно сохранять в localStorage)
+    if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  </script>
 </body>
+
 </html>

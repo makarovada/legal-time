@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Response, Request
 from fastapi.responses import HTMLResponse
-from fastapi.security import OAuth2PasswordRequestFormStrict
+from fastapi.security import OAuth2PasswordRequestForm   # ← меняем здесь
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.employee import Employee
@@ -8,6 +8,7 @@ from app.models.client import Client
 from app.utils.auth import authenticate_user, create_access_token
 from app.config import settings
 from datetime import timedelta
+from app.common import templates
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -15,7 +16,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 def login(
     response: Response,
     request: Request,
-    form_data: OAuth2PasswordRequestFormStrict = Depends(),
+    form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db)
 ):
     user = authenticate_user(db, form_data.username, form_data.password)
@@ -49,7 +50,7 @@ def login(
         "clients": clients
     })
 
-@router.get("/logout", response_class=HTMLResponse)
+@router.get("/logout", response_class=HTMLResponse, name="logout")
 def logout(response: Response, request: Request):
     response.delete_cookie(key="access_token")
     return templates.TemplateResponse("login.html", {"request": request})

@@ -102,3 +102,14 @@ def approve_time_entry(
     db.commit()
     db.refresh(entry)
     return entry
+# from .. import schemas, crud  # ваши модели и CRUD
+
+@router.get("/stats")
+def get_stats(
+    current_user = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    # Здесь ваша логика с учётом current_user (например, статистика только по его сотруднику)
+    total_hours = 150.0
+    pending = 7
+    return {"totalHours": total_hours, "pendingTimesheets": pending}

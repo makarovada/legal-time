@@ -15,6 +15,11 @@ class Employee(BaseModel):
     email = Column(String, unique=True, nullable=False, index=True)
     password_hash = Column(String, nullable=False)
     role = Column(Enum(EmployeeRole), nullable=False, default=EmployeeRole.lawyer)
+    
+    # Google Calendar интеграция
+    google_token_encrypted = Column(String, nullable=True)
+    google_refresh_token_encrypted = Column(String, nullable=True)
+    google_calendar_id = Column(String, nullable=True)  # ID календаря для синхронизации
 
     # Строковая ссылка — SQLAlchemy найдёт класс позже
     time_entries = relationship("TimeEntry", back_populates="employee")

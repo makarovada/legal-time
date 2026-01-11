@@ -19,6 +19,7 @@ class TimeEntry(BaseModel):
     description = Column(Text)
     date = Column(Date, nullable=False)
     status = Column(Enum(TimeEntryStatus), default=TimeEntryStatus.draft)
+    google_event_id = Column(String, nullable=True)  # ID события в Google Calendar
 
     # Строковая ссылка
     employee = relationship("Employee", back_populates="time_entries")

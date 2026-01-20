@@ -28,7 +28,9 @@ class CRUDBase(Generic[ModelType]):
         return db_obj
 
     def remove(self, db: Session, id: Any) -> ModelType:
-        obj = db.query(self.model).get(id)
+        obj = db.query(self.model).filter(self.model.id == id).first()
+        if not obj:
+            raise ValueError(f"{self.model.__name__} with id {id} not found")
         db.delete(obj)
         db.commit()
         return obj

@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.crud.client import client as crud_client
 from app.schemas.client import Client, ClientCreate
-from app.utils.auth import get_current_admin_user
+from app.utils.auth import get_current_admin_user, get_current_user
 
 router = APIRouter(prefix="/clients", tags=["clients"])
 
@@ -20,8 +20,9 @@ def read_clients(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_admin_user)
+    current_user = Depends(get_current_user)  # Все авторизованные могут читать
 ):
+    """Получить список клиентов - доступно всем авторизованным пользователям"""
     clients = crud_client.get_multi(db, skip=skip, limit=limit)
     return clients
 
@@ -29,7 +30,7 @@ def read_clients(
 def read_client(
     client_id: int,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_admin_user)
+    current_user = Depends(get_current_user)  # Все авторизованные могут читать
 ):
     db_client = crud_client.get(db, id=client_id)
     if not db_client:
@@ -57,4 +58,18 @@ def delete_client(
     db_client = crud_client.get(db, id=client_id)
     if not db_client:
         raise HTTPException(status_code=404, detail="Client not found")
-    return crud_client.remove(db, id=client_id)
+    
+    # Проверяем, есть ли связанные договоры
+    if db_client.contracts:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Cannot delete client: client has {len(db_client.contracts)} associated contract(s). Delete contracts first."
+        )
+    
+    try:
+        return crud_client.remove(db, id=client_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error deleting client: {str(e)}")

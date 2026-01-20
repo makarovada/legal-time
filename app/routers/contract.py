@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.crud.contract import contract as crud_contract
 from app.schemas.contract import Contract, ContractCreate
-from app.utils.auth import get_current_admin_user  # пока только админ
+from app.utils.auth import get_current_admin_user, get_current_user
 
 router = APIRouter(prefix="/contracts", tags=["contracts"])
 
@@ -20,15 +20,16 @@ def read_contracts(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_admin_user)
+    current_user = Depends(get_current_user)  # Все авторизованные могут читать
 ):
+    """Получить список договоров - доступно всем авторизованным пользователям"""
     return crud_contract.get_multi(db, skip=skip, limit=limit)
 
 @router.get("/{contract_id}", response_model=Contract)
 def read_contract(
     contract_id: int,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_admin_user)
+    current_user = Depends(get_current_user)  # Все авторизованные могут читать
 ):
     db_contract = crud_contract.get(db, id=contract_id)
     if not db_contract:

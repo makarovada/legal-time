@@ -178,6 +178,59 @@ def approve_time_entry(
     return entry
 
 
+@router.post("/sync-to-calendar", response_model=dict)
+def sync_all_entries_to_calendar(
+    db: Session = Depends(get_db),
+    current_user: Employee = Depends(get_current_user)
+):
+    """Синхронизировать все существующие таймшиты с Google Calendar"""
+    if not current_user.google_token_encrypted:
+        raise HTTPException(
+            status_code=400,
+            detail="Google Calendar not connected. Please connect your Google account first."
+        )
+    
+    # Получаем все таймшиты пользователя без google_event_id
+    entries = (
+        db.query(TimeEntryModel)
+        .filter(
+            TimeEntryModel.employee_id == current_user.id,
+            TimeEntryModel.google_event_id.is_(None)
+        )
+        .all()
+    )
+    
+    synced_count = 0
+    failed_count = 0
+    
+    for entry in entries:
+        try:
+            matter = db.query(Matter).filter(Matter.id == entry.matter_id).first()
+            activity_type = db.query(ActivityType).filter(ActivityType.id == entry.activity_type_id).first()
+            
+            if matter and activity_type:
+                event_id = create_calendar_event(current_user, entry, matter, activity_type)
+                if event_id:
+                    entry.google_event_id = event_id
+                    synced_count += 1
+                else:
+                    failed_count += 1
+            else:
+                failed_count += 1
+        except Exception as e:
+            print(f"Failed to sync entry {entry.id}: {e}")
+            failed_count += 1
+    
+    db.commit()
+    
+    return {
+        "message": f"Sync completed",
+        "synced": synced_count,
+        "failed": failed_count,
+        "total": len(entries)
+    }
+
+
 @router.get("/calendar/events")
 def get_calendar_events(
     db: Session = Depends(get_db),

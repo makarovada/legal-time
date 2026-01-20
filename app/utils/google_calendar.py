@@ -10,9 +10,12 @@ from app.config import settings
 import json
 
 # Scopes для Google Calendar API
+# ВАЖНО: Эти scopes должны совпадать с настройками в Google Cloud Console
+# Если вы изменили scopes в Google Cloud Console, обновите их здесь тоже
+# Для создания календарей нужен полный доступ calendar, calendar.readonly не нужен
 SCOPES = [
-    'https://www.googleapis.com/auth/calendar.readonly',
-    'https://www.googleapis.com/auth/calendar.events'
+    'https://www.googleapis.com/auth/calendar',  # Полный доступ, включая создание календарей
+    'https://www.googleapis.com/auth/calendar.events'  # Управление событиями
 ]
 
 
@@ -198,6 +201,27 @@ def delete_calendar_event(employee, event_id: str) -> bool:
     except HttpError as e:
         print(f"Error deleting calendar event: {e}")
         return False
+
+
+def create_legal_time_calendar(employee) -> Optional[str]:
+    """Создать отдельный календарь LegalTime для пользователя"""
+    service = get_calendar_service(employee)
+    if not service:
+        return None
+    
+    try:
+        calendar = {
+            'summary': 'LegalTime',
+            'description': 'Календарь для учета времени и задач юридической практики',
+            'timeZone': 'UTC'
+        }
+        
+        created_calendar = service.calendars().insert(body=calendar).execute()
+        calendar_id = created_calendar.get('id')
+        return calendar_id
+    except HttpError as e:
+        print(f"Error creating calendar: {e}")
+        return None
 
 
 def get_google_oauth_flow(redirect_uri: str) -> Flow:

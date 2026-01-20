@@ -71,10 +71,11 @@ def google_authorize(
     flow = get_google_oauth_flow(redirect_uri)
     
     # Сохраняем user_id в state для безопасности
+    # prompt='consent' заставляет запросить разрешения заново, что важно при изменении scopes
     authorization_url, state = flow.authorization_url(
         access_type='offline',
-        include_granted_scopes='true',
-        prompt='consent',
+        include_granted_scopes='false',  # Не включаем ранее выданные scopes, чтобы получить новые
+        prompt='consent',  # Всегда запрашиваем согласие заново
         state=str(current_user.id)  # Сохраняем ID пользователя в state
     )
     
@@ -126,6 +127,13 @@ def google_callback(
         user.google_token_encrypted = encrypt_token(json.dumps(token_data))
         if credentials.refresh_token:
             user.google_refresh_token_encrypted = encrypt_token(credentials.refresh_token)
+        
+        # Создаем отдельный календарь LegalTime, если его еще нет
+        if not user.google_calendar_id:
+            from app.utils.google_calendar import create_legal_time_calendar
+            calendar_id = create_legal_time_calendar(user)
+            if calendar_id:
+                user.google_calendar_id = calendar_id
         
         db.commit()
         db.refresh(user)

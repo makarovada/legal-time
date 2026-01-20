@@ -6,8 +6,8 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.utils.auth import authenticate_user, create_access_token, get_password_hash, get_current_user
 from app.models.employee import Employee
-from app.schemas.auth import Token
-from datetime import timedelta
+from app.models.client import Client
+from app.utils.auth import authenticate_user, create_access_token
 from app.config import settings
 from fastapi.security import OAuth2PasswordRequestFormStrict  # <-- новый импорт
 from app.utils.google_calendar import get_google_oauth_flow, encrypt_token
@@ -16,25 +16,25 @@ import json
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-
-@router.post("/login", response_model=Token)
+@router.post("/login", response_class=HTMLResponse)
 def login(
-    form_data: OAuth2PasswordRequestFormStrict = Depends(),  # <-- Strict версия
+    response: Response,
+    request: Request,
+    form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db)
 ):
     user = authenticate_user(db, form_data.username, form_data.password)
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        return templates.TemplateResponse("login.html", {
+            "request": request,
+            "error": "Неверный email или пароль"
+        })
+
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": user.email, "role": user.role},
         expires_delta=access_token_expires
     )
-    return {"access_token": access_token, "token_type": "bearer"}
 
 # Для создания первого админа (одноразово)
 @router.post("/create-admin")

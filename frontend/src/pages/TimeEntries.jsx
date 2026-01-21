@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { format } from 'date-fns'
 import api from '../services/api'
 import { useAuth } from '../contexts/AuthContext'
-import { Plus, Edit, Trash2, CheckCircle, Filter, X, FileSpreadsheet } from 'lucide-react'
+import { Plus, Edit, Trash2, CheckCircle, Filter, X } from 'lucide-react'
 import TimeEntryModal from '../components/TimeEntryModal'
 
 const TimeEntries = () => {
@@ -44,7 +44,6 @@ const TimeEntries = () => {
     fetchData()
     if (isSeniorOrAdmin) {
       fetchEmployees()
-      fetchReportDictionaries()
     }
   }, [])
 
@@ -58,15 +57,21 @@ const TimeEntries = () => {
 
   const fetchData = async () => {
     try {
-      const [mattersRes, activityTypesRes] = await Promise.all([
+      const [mattersRes, activityTypesRes, clientsRes, contractsRes] = await Promise.all([
         api.get('/matters'),
         api.get('/activity-types'),
+        api.get('/clients'),
+        api.get('/contracts'),
       ])
       const mattersData = Array.isArray(mattersRes.data) ? mattersRes.data : []
       const activityTypesData = Array.isArray(activityTypesRes.data) ? activityTypesRes.data : []
-      
+      const clientsData = Array.isArray(clientsRes.data) ? clientsRes.data : []
+      const contractsData = Array.isArray(contractsRes.data) ? contractsRes.data : []
+
       setMatters(mattersData)
       setActivityTypes(activityTypesData)
+      setClients(clientsData)
+      setContracts(contractsData)
     } catch (error) {
       console.error('Error fetching data:', error)
       setMatters([])
@@ -81,21 +86,6 @@ const TimeEntries = () => {
     } catch (error) {
       console.error('Error fetching employees:', error)
       setEmployees([])
-    }
-  }
-
-  const fetchReportDictionaries = async () => {
-    try {
-      const [clientsRes, contractsRes] = await Promise.all([
-        api.get('/clients'),
-        api.get('/contracts'),
-      ])
-      setClients(Array.isArray(clientsRes.data) ? clientsRes.data : [])
-      setContracts(Array.isArray(contractsRes.data) ? contractsRes.data : [])
-    } catch (error) {
-      console.error('Error fetching report dictionaries:', error)
-      setClients([])
-      setContracts([])
     }
   }
 
@@ -422,21 +412,10 @@ const TimeEntries = () => {
         </div>
       )}
 
-      {/* Фильтры и кнопка для вкладки "Отчёт" */}
+      {/* Вкладка "Отчёт" для старших юристов и админов */}
       {isSeniorOrAdmin && activeTab === 'report' && (
-        <div className="bg-white rounded-lg shadow-sm border border-jira-border p-4">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-jira-gray">Отчёт по времени</h3>
-            <button
-              onClick={handleReportDownload}
-              disabled={reportDownloading}
-              className="flex items-center space-x-2 px-4 py-2 bg-jira-blue text-white rounded-md hover:bg-jira-blue-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <FileSpreadsheet size={16} />
-              <span>{reportDownloading ? 'Формирование...' : 'Скачать отчёт'}</span>
-            </button>
-          </div>
-
+        <div className="bg-white rounded-lg shadow-sm border border-jira-border p-6 space-y-4">
+          <h2 className="text-lg font-semibold text-jira-gray">Фильтры для отчёта (одобренные таймшиты)</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-jira-gray mb-1">
@@ -546,13 +525,24 @@ const TimeEntries = () => {
               />
             </div>
           </div>
+
+          <div className="flex justify-end">
+            <button
+              onClick={handleReportDownload}
+              disabled={reportDownloading}
+              className="flex items-center space-x-2 px-4 py-2 bg-jira-blue text-white rounded-md hover:bg-jira-blue-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <span>{reportDownloading ? 'Формирование отчёта...' : 'Скачать отчёт'}</span>
+            </button>
+          </div>
         </div>
       )}
 
+      {/* Основная таблица таймшитов (для вкладок "Мои таймшиты" и "На одобрение") */}
       {activeTab !== 'report' && (
-      <div className="bg-white rounded-lg shadow-sm border border-jira-border overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
+        <div className="bg-white rounded-lg shadow-sm border border-jira-border overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
             <thead className="bg-jira-gray-light">
               <tr>
                 {isSeniorOrAdmin && activeTab === 'pending' && (
@@ -663,7 +653,7 @@ const TimeEntries = () => {
             </tbody>
           </table>
         </div>
-      </div>
+        </div>
       )}
 
       {isModalOpen && (

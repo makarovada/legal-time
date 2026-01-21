@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block title %}Дашборд - LegalTime{% endblock %}
+
+{% block content %}
+
+<div class="space-y-8">
+
+    <!-- Приветствие + быстрые действия -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
+                Добро пожаловать, {{ current_user.name }}
+            </h1>
+            <p class="mt-1 text-gray-500 dark:text-gray-400">
+                Вот что происходит в LegalTime на {{ current_date.strftime("%d %B %Y") }}
+            </p>
+        </div>
+
+        <div class="flex flex-wrap gap-3">
+            <a href="{{ url_for('time_entry.create_time_entry') }}" 
+               class="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                </svg>
+                Новый таймшит
+            </a>
+            <a href="{{ url_for('matter.create_matter') }}" 
+               class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                Новое дело
+            </a>
+        </div>
+    </div>
+
+    <!-- KPI карточки (в стиле Jira) -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-200 dark:border-gray-700">
+            <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Активные дела</h3>
+            <p class="mt-2 text-3xl font-bold text-indigo-600 dark:text-indigo-400">{{ stats.active_matters }}</p>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">+3 за неделю</p>
+        </div>
+
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-200 dark:border-gray-700">
+            <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Черновики таймшитов</h3>
+            <p class="mt-2 text-3xl font-bold text-yellow-600 dark:text-yellow-400">{{ stats.pending_time_entries }}</p>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Требуют внимания</p>
+        </div>
+
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-200 dark:border-gray-700">
+            <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Клиенты</h3>
+            <p class="mt-2 text-3xl font-bold text-green-600 dark:text-green-400">{{ stats.clients_count }}</p>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Всего в системе</p>
+        </div>
+
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-200 dark:border-gray-700">
+            <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Часы в этом месяце</h3>
+            <p class="mt-2 text-3xl font-bold text-purple-600 dark:text-purple-400">{{ stats.total_hours_this_month }} ч</p>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Цель: 160 ч</p>
+        </div>
+    </div>
+
+    <!-- Недавняя активность (в стиле activity stream в Jira) -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm overflow-hidden border border-gray-200 dark:border-gray-700">
+        <div class="px-6 py-5 border-b border-gray-200 dark:border-gray-700">
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Недавняя активность</h2>
+        </div>
+        <div class="divide-y divide-gray-200 dark:divide-gray-700">
+            {% for activity in recent_activities %}
+            <div class="px-6 py-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
+                <div class="flex items-start">
+                    <div class="flex-shrink-0 pt-1">
+                        <div class="h-8 w-8 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center text-indigo-600 dark:text-indigo-300 font-medium">
+                            {{ activity.employee.name|first|upper }}
+                        </div>
+                    </div>
+                    <div class="ml-4 flex-1">
+                        <p class="text-sm text-gray-900 dark:text-gray-100">
+                            <span class="font-medium">{{ activity.employee.name }}</span>
+                            добавил таймшит 
+                            <span class="font-medium">{{ activity.hours }} ч</span>
+                            на дело "{{ activity.matter.code }} - {{ activity.matter.title|truncate(60) }}"
+                        </p>
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                            {{ activity.created_at.strftime("%d.%m.%Y %H:%M") }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
+                Пока нет активности. Начните вести учёт времени!
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Быстрые ссылки / полезные виджеты -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl p-6 text-white shadow-md">
+            <h3 class="text-lg font-semibold">Быстрый старт</h3>
+            <ul class="mt-4 space-y-3">
+                <li><a href="#" class="hover:underline">Импортировать события из календаря</a></li>
+                <li><a href="#" class="hover:underline">Добавить нового клиента</a></li>
+                <li><a href="#" class="hover:underline">Просмотреть просроченные таймшиты</a></li>
+            </ul>
+        </div>
+
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-200 dark:border-gray-700">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Полезные ссылки</h3>
+            <ul class="mt-4 space-y-3 text-indigo-600 dark:text-indigo-400">
+                <li><a href="#" class="hover:underline">Мои таймшиты за неделю</a></li>
+                <li><a href="#" class="hover:underline">Отчёт по практике</a></li>
+            </ul>
+        </div>
+    </div>
+
+</div>
+
+{% endblock %}

@@ -7,6 +7,8 @@ import TimeEntries from './pages/TimeEntries'
 import Matters from './pages/Matters'
 import Clients from './pages/Clients'
 import Contracts from './pages/Contracts'
+import Employees from './pages/Employees'
+import Rates from './pages/Rates'
 import Layout from './components/Layout'
 import ProtectedRoute from './components/ProtectedRoute'
 
@@ -31,6 +33,8 @@ function App() {
               <Route path="matters" element={<Matters />} />
               <Route path="clients" element={<Clients />} />
               <Route path="contracts" element={<Contracts />} />
+              <Route path="employees" element={<Employees />} />
+              <Route path="rates" element={<Rates />} />
             </Route>
           </Routes>
         </BrowserRouter>

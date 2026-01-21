@@ -6,12 +6,15 @@ import {
   FileText, 
   Users, 
   FileCheck,
+  UserCog,
   LogOut 
 } from 'lucide-react'
 
 const Layout = () => {
-  const { logout } = useAuth()
+  const { logout, user } = useAuth()
   const location = useLocation()
+  const isAdmin = user?.role === 'admin'
+  const isSeniorOrAdmin = user?.role === 'admin' || user?.role === 'senior_lawyer'
 
   const navigation = [
     { name: 'Дашборд', href: '/dashboard', icon: LayoutDashboard },
@@ -19,6 +22,8 @@ const Layout = () => {
     { name: 'Дела', href: '/matters', icon: FileText },
     { name: 'Клиенты', href: '/clients', icon: Users },
     { name: 'Договоры', href: '/contracts', icon: FileCheck },
+    ...(isAdmin ? [{ name: 'Сотрудники', href: '/employees', icon: UserCog }] : []),
+    ...(isSeniorOrAdmin ? [{ name: 'Ставки', href: '/rates', icon: FileText }] : []),
   ]
 
   const isActive = (path) => location.pathname === path
@@ -47,7 +52,7 @@ const Layout = () => {
 
       <div className="flex">
         {/* Sidebar */}
-        <aside className="w-64 bg-white border-r border-jira-border min-h-[calc(100vh-4rem)]">
+        <aside className="w-64 bg-white border-r border-jira-border min-h-[calc(100vh-4rem)] flex-shrink-0">
           <nav className="p-4 space-y-1">
             {navigation.map((item) => {
               const Icon = item.icon
@@ -70,7 +75,7 @@ const Layout = () => {
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 p-6">
+        <main className="flex-1 p-6 overflow-x-hidden">
           <Outlet />
         </main>
       </div>

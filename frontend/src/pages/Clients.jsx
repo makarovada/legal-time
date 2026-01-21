@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react'
 import api from '../services/api'
+import { useAuth } from '../contexts/AuthContext'
 import { Plus, Edit, Trash2 } from 'lucide-react'
 import ClientModal from '../components/ClientModal'
 
 const Clients = () => {
+  const { user } = useAuth()
+  const isSeniorOrAdmin = user?.role === 'senior_lawyer' || user?.role === 'admin'
   const [clients, setClients] = useState([])
   const [loading, setLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -79,13 +82,15 @@ const Clients = () => {
             Управление клиентами
           </p>
         </div>
-        <button
-          onClick={handleCreate}
-          className="flex items-center space-x-2 px-4 py-2 bg-jira-blue text-white rounded-md hover:bg-jira-blue-dark transition-colors"
-        >
-          <Plus size={20} />
-          <span>Добавить клиента</span>
-        </button>
+        {isSeniorOrAdmin && (
+          <button
+            onClick={handleCreate}
+            className="flex items-center space-x-2 px-4 py-2 bg-jira-blue text-white rounded-md hover:bg-jira-blue-dark transition-colors"
+          >
+            <Plus size={20} />
+            <span>Добавить клиента</span>
+          </button>
+        )}
       </div>
 
       <div className="bg-white rounded-lg shadow-sm border border-jira-border overflow-hidden">
@@ -100,14 +105,14 @@ const Clients = () => {
                   Тип
                 </th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-jira-gray uppercase tracking-wider">
-                  Действия
+                  {isSeniorOrAdmin ? 'Действия' : ''}
                 </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-jira-border">
               {clients.length === 0 ? (
                 <tr>
-                  <td colSpan="3" className="px-6 py-4 text-center text-jira-gray">
+                  <td colSpan={isSeniorOrAdmin ? 3 : 2} className="px-6 py-4 text-center text-jira-gray">
                     Нет клиентов. Создайте первого клиента.
                   </td>
                 </tr>
@@ -129,22 +134,24 @@ const Clients = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex items-center justify-end space-x-2">
-                        <button
-                          onClick={() => handleEdit(client)}
-                          className="text-jira-blue hover:text-jira-blue-dark"
-                          title="Редактировать"
-                        >
-                          <Edit size={16} />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(client.id)}
-                          className="text-red-600 hover:text-red-700"
-                          title="Удалить"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
+                      {isSeniorOrAdmin && (
+                        <div className="flex items-center justify-end space-x-2">
+                          <button
+                            onClick={() => handleEdit(client)}
+                            className="text-jira-blue hover:text-jira-blue-dark"
+                            title="Редактировать"
+                          >
+                            <Edit size={16} />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(client.id)}
+                            className="text-red-600 hover:text-red-700"
+                            title="Удалить"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))

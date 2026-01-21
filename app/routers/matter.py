@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.crud.matter import matter as crud_matter
 from app.schemas.matter import Matter, MatterCreate
-from app.utils.auth import get_current_admin_user, get_current_user
+from app.utils.auth import get_current_user, get_current_senior_lawyer_or_admin
 
 router = APIRouter(prefix="/matters", tags=["matters"])
 
@@ -11,8 +11,9 @@ router = APIRouter(prefix="/matters", tags=["matters"])
 def create_matter(
     matter_in: MatterCreate,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_admin_user)
+    current_user = Depends(get_current_senior_lawyer_or_admin)
 ):
+    """Создать дело - доступно старшим юристам и администраторам"""
     return crud_matter.create(db, obj_in=matter_in.dict())
 
 @router.get("/", response_model=list[Matter])
@@ -20,7 +21,7 @@ def read_matters(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)  # Все авторизованные могут читать
+    current_user = Depends(get_current_user)
 ):
     """Получить список дел - доступно всем авторизованным пользователям"""
     return crud_matter.get_multi(db, skip=skip, limit=limit)
@@ -29,7 +30,7 @@ def read_matters(
 def read_matter(
     matter_id: int,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)  # Все авторизованные могут читать
+    current_user = Depends(get_current_user)
 ):
     """Получить дело по ID - доступно всем авторизованным пользователям"""
     db_matter = crud_matter.get(db, id=matter_id)
@@ -42,8 +43,9 @@ def update_matter(
     matter_id: int,
     matter_in: MatterCreate,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_admin_user)
+    current_user = Depends(get_current_senior_lawyer_or_admin)
 ):
+    """Обновить дело - доступно старшим юристам и администраторам"""
     db_matter = crud_matter.get(db, id=matter_id)
     if not db_matter:
         raise HTTPException(status_code=404, detail="Matter not found")
@@ -53,8 +55,9 @@ def update_matter(
 def delete_matter(
     matter_id: int,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_admin_user)
+    current_user = Depends(get_current_senior_lawyer_or_admin)
 ):
+    """Удалить дело - доступно старшим юристам и администраторам"""
     db_matter = crud_matter.get(db, id=matter_id)
     if not db_matter:
         raise HTTPException(status_code=404, detail="Matter not found")

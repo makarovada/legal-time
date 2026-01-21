@@ -2,16 +2,15 @@ import { useEffect, useState } from 'react'
 import api from '../services/api'
 import { useAuth } from '../contexts/AuthContext'
 import { Plus, Edit, Trash2 } from 'lucide-react'
-import MatterModal from '../components/MatterModal'
+import EmployeeModal from '../components/EmployeeModal'
 
-const Matters = () => {
+const Employees = () => {
   const { user } = useAuth()
-  const isSeniorOrAdmin = user?.role === 'senior_lawyer' || user?.role === 'admin'
-  const [matters, setMatters] = useState([])
-  const [contracts, setContracts] = useState([])
+  const isAdmin = user?.role === 'admin'
+  const [employees, setEmployees] = useState([])
   const [loading, setLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [editingMatter, setEditingMatter] = useState(null)
+  const [editingEmployee, setEditingEmployee] = useState(null)
 
   useEffect(() => {
     fetchData()
@@ -19,29 +18,12 @@ const Matters = () => {
 
   const fetchData = async () => {
     try {
-      const [mattersRes, contractsRes] = await Promise.all([
-        api.get('/matters'),
-        api.get('/contracts'),
-      ])
-      // Убеждаемся, что данные - массивы
-      const mattersData = Array.isArray(mattersRes.data) ? mattersRes.data : []
-      const contractsData = Array.isArray(contractsRes.data) ? contractsRes.data : []
-      
-      console.log('Matters - Fetched data:', {
-        matters: mattersData.length,
-        contracts: contractsData.length,
-        mattersSample: mattersData[0],
-        contractsSample: contractsData[0]
-      })
-      
-      setMatters(mattersData)
-      setContracts(contractsData)
+      const response = await api.get('/employees')
+      const employeesData = Array.isArray(response.data) ? response.data : []
+      setEmployees(employeesData)
     } catch (error) {
-      console.error('Error fetching data:', error)
-      console.error('Error response:', error.response?.data)
-      // При ошибке устанавливаем пустые массивы
-      setMatters([])
-      setContracts([])
+      console.error('Error fetching employees:', error)
+      setEmployees([])
       alert('Ошибка при загрузке данных: ' + (error.response?.data?.detail || error.message))
     } finally {
       setLoading(false)
@@ -49,37 +31,50 @@ const Matters = () => {
   }
 
   const handleCreate = () => {
-    setEditingMatter(null)
+    setEditingEmployee(null)
     setIsModalOpen(true)
   }
 
-  const handleEdit = (matter) => {
-    setEditingMatter(matter)
+  const handleEdit = (employee) => {
+    setEditingEmployee(employee)
     setIsModalOpen(true)
   }
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Вы уверены, что хотите удалить это дело?')) {
+    if (!window.confirm('Вы уверены, что хотите удалить этого сотрудника?')) {
       return
     }
     try {
-      await api.delete(`/matters/${id}`)
+      await api.delete(`/employees/${id}`)
       fetchData()
     } catch (error) {
-      console.error('Error deleting matter:', error)
-      alert('Ошибка при удалении дела')
+      console.error('Error deleting employee:', error)
+      alert('Ошибка при удалении сотрудника: ' + (error.response?.data?.detail || error.message))
     }
   }
 
   const handleModalClose = () => {
     setIsModalOpen(false)
-    setEditingMatter(null)
+    setEditingEmployee(null)
     fetchData()
   }
 
-  const getContractName = (contractId) => {
-    const contract = contracts.find((c) => c.id === contractId)
-    return contract ? contract.number || `Договор #${contract.id}` : 'Неизвестно'
+  const getRoleLabel = (role) => {
+    const roleLabels = {
+      lawyer: 'Юрист',
+      senior_lawyer: 'Старший юрист',
+      admin: 'Администратор',
+    }
+    return roleLabels[role] || role
+  }
+
+  const getRoleBadgeColor = (role) => {
+    const colors = {
+      lawyer: 'bg-blue-100 text-blue-800',
+      senior_lawyer: 'bg-purple-100 text-purple-800',
+      admin: 'bg-red-100 text-red-800',
+    }
+    return colors[role] || 'bg-gray-100 text-gray-800'
   }
 
   if (loading) {
@@ -90,18 +85,18 @@ const Matters = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-jira-gray">Дела</h1>
+          <h1 className="text-2xl font-bold text-jira-gray">Сотрудники</h1>
           <p className="text-sm text-jira-gray mt-1">
-            Управление юридическими делами
+            {isAdmin ? 'Управление сотрудниками и их ролями' : 'Список сотрудников'}
           </p>
         </div>
-        {isSeniorOrAdmin && (
+        {isAdmin && (
           <button
             onClick={handleCreate}
             className="flex items-center space-x-2 px-4 py-2 bg-jira-blue text-white rounded-md hover:bg-jira-blue-dark transition-colors"
           >
             <Plus size={20} />
-            <span>Добавить дело</span>
+            <span>Добавить сотрудника</span>
           </button>
         )}
       </div>
@@ -112,56 +107,56 @@ const Matters = () => {
             <thead className="bg-jira-gray-light">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-jira-gray uppercase tracking-wider">
-                  Код
+                  Имя
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-jira-gray uppercase tracking-wider">
-                  Название
+                  Email
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-jira-gray uppercase tracking-wider">
-                  Договор
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-jira-gray uppercase tracking-wider">
-                  Описание
+                  Роль
                 </th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-jira-gray uppercase tracking-wider">
-                  {isSeniorOrAdmin ? 'Действия' : ''}
+                  {isAdmin ? 'Действия' : ''}
                 </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-jira-border">
-              {matters.length === 0 ? (
+              {employees.length === 0 ? (
                 <tr>
-                  <td colSpan={isSeniorOrAdmin ? 5 : 4} className="px-6 py-4 text-center text-jira-gray">
-                    Нет дел. Создайте первое дело.
+                  <td colSpan={isAdmin ? 4 : 3} className="px-6 py-4 text-center text-jira-gray">
+                    Нет сотрудников.
                   </td>
                 </tr>
               ) : (
-                matters.map((matter) => (
-                  <tr key={matter.id} className="hover:bg-jira-gray-light">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-jira-gray">
-                      {matter.code}
+                employees.map((employee) => (
+                  <tr key={employee.id} className="hover:bg-jira-gray-light">
+                    <td className="px-6 py-4 text-sm font-medium text-jira-gray">
+                      {employee.name}
                     </td>
                     <td className="px-6 py-4 text-sm text-jira-gray">
-                      {matter.name}
+                      {employee.email}
                     </td>
-                    <td className="px-6 py-4 text-sm text-jira-gray">
-                      {getContractName(matter.contract_id)}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-jira-gray max-w-xs truncate">
-                      {matter.description || '-'}
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span
+                        className={`px-2 py-1 text-xs font-medium rounded-full ${getRoleBadgeColor(
+                          employee.role
+                        )}`}
+                      >
+                        {getRoleLabel(employee.role)}
+                      </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      {isSeniorOrAdmin && (
+                      {isAdmin && (
                         <div className="flex items-center justify-end space-x-2">
                           <button
-                            onClick={() => handleEdit(matter)}
+                            onClick={() => handleEdit(employee)}
                             className="text-jira-blue hover:text-jira-blue-dark"
                             title="Редактировать"
                           >
                             <Edit size={16} />
                           </button>
                           <button
-                            onClick={() => handleDelete(matter.id)}
+                            onClick={() => handleDelete(employee.id)}
                             className="text-red-600 hover:text-red-700"
                             title="Удалить"
                           >
@@ -179,15 +174,11 @@ const Matters = () => {
       </div>
 
       {isModalOpen && (
-        <MatterModal
-          matter={editingMatter}
-          contracts={contracts}
-          onClose={handleModalClose}
-        />
+        <EmployeeModal employee={editingEmployee} onClose={handleModalClose} />
       )}
     </div>
   )
 }
 
-export default Matters
+export default Employees
 

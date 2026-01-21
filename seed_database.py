@@ -219,14 +219,17 @@ def seed_rates(db, employees, contracts):
     """Создание ставок"""
     print("\n💰 Создание ставок...")
     
+    # Первая ставка — дефолтная (если не найдено ничего более специфичного)
     rates_data = [
-        # Ставки для сотрудников
+        {"employee": None, "contract": None, "value": 3000.0},  # дефолтная ставка
+
+        # Индивидуальные ставки для сотрудников
         {"employee": 1, "contract": None, "value": 5000.0},  # Старший юрист
         {"employee": 2, "contract": None, "value": 4000.0},  # Юрист
         {"employee": 3, "contract": None, "value": 3500.0},  # Юрист
         {"employee": 4, "contract": None, "value": 4000.0},  # Юрист
-        
-        # Ставки для договоров
+
+        # Ставки для договоров (приоритетнее индивидуальных)
         {"employee": None, "contract": 0, "value": 4500.0},
         {"employee": None, "contract": 1, "value": 5000.0},
         {"employee": None, "contract": 2, "value": 3000.0},
@@ -277,7 +280,22 @@ def seed_time_entries(db, employees, matters, activity_types, rates):
             for _ in range(random.randint(3, 5)):
                 matter = random.choice(matters)
                 activity = random.choice(activity_types)
-                rate = random.choice([r for r in rates if r.employee_id == employee.id or r.contract_id == matter.contract_id] + [None])
+
+                # Определяем ставку с приоритетом:
+                # 1) ставка по договору
+                # 2) индивидуальная ставка сотрудника
+                # 3) дефолтная ставка (employee_id is None, contract_id is None)
+                contract_rates = [r for r in rates if r.contract_id == matter.contract_id and r.employee_id is None]
+                employee_rates = [r for r in rates if r.employee_id == employee.id and r.contract_id is None]
+                default_rates = [r for r in rates if r.employee_id is None and r.contract_id is None]
+
+                rate = None
+                if contract_rates:
+                    rate = contract_rates[0]
+                elif employee_rates:
+                    rate = employee_rates[0]
+                elif default_rates:
+                    rate = default_rates[0]
                 
                 entry_date = week_start - timedelta(days=random.randint(0, 6))
                 hours = round(random.uniform(0.5, 8.0), 2)

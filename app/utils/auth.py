@@ -57,3 +57,9 @@ def get_current_admin_user(current_user = Depends(get_current_user)):
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Not enough permissions")
     return current_user
+
+def get_current_senior_lawyer_or_admin(current_user = Depends(get_current_user)):
+    """Проверка прав для старших юристов и админов (CRUD операции)"""
+    if current_user.role not in ["admin", "senior_lawyer"]:
+        raise HTTPException(status_code=403, detail="Not enough permissions. Only senior lawyers and admins can perform this action.")
+    return current_user

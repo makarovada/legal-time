@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from pathlib import Path
 import time
-from app.routers import auth, client, contract, matter, time_entry, employee, activity_type
+from app.routers import auth, client, contract, matter, time_entry, employee, activity_type, rate
 from app.config import settings
 from sqlalchemy.orm import Session
 from app.database import get_db
@@ -72,6 +72,7 @@ app.include_router(contract.router, prefix="/api")
 app.include_router(matter.router, prefix="/api")
 app.include_router(time_entry.router, prefix="/api")
 app.include_router(employee.router, prefix="/api")
+app.include_router(rate.router, prefix="/api")
 app.include_router(activity_type.router, prefix="/api")
 
 # Статические файлы (CSS, JS, изображения)

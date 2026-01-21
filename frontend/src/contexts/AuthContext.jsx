@@ -13,6 +13,24 @@ export const useAuth = () => {
   return context
 }
 
+// Функция для декодирования JWT токена
+const decodeToken = (token) => {
+  try {
+    const base64Url = token.split('.')[1]
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    )
+    return JSON.parse(jsonPayload)
+  } catch (error) {
+    console.error('Error decoding token:', error)
+    return null
+  }
+}
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -21,7 +39,16 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     if (token) {
       api.defaults.headers.common['Authorization'] = `Bearer ${token}`
-      // Можно добавить запрос для получения информации о пользователе
+      // Декодируем токен для получения роли пользователя
+      const decoded = decodeToken(token)
+      if (decoded) {
+        setUser({
+          email: decoded.sub,
+          role: decoded.role || 'lawyer',
+        })
+      }
+    } else {
+      setUser(null)
     }
     setLoading(false)
   }, [token])
@@ -48,6 +75,16 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem('token', access_token)
       setToken(access_token)
       api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`
+      
+      // Декодируем токен для получения роли пользователя
+      const decoded = decodeToken(access_token)
+      if (decoded) {
+        setUser({
+          email: decoded.sub,
+          role: decoded.role || 'lawyer',
+        })
+      }
+      
       return { success: true }
     } catch (error) {
       console.error('Login error:', error)

@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.crud.contract import contract as crud_contract
 from app.schemas.contract import Contract, ContractCreate
-from app.utils.auth import get_current_admin_user, get_current_user
+from app.utils.auth import get_current_user, get_current_senior_lawyer_or_admin
 
 router = APIRouter(prefix="/contracts", tags=["contracts"])
 
@@ -11,8 +11,9 @@ router = APIRouter(prefix="/contracts", tags=["contracts"])
 def create_contract(
     contract_in: ContractCreate,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_admin_user)
+    current_user = Depends(get_current_senior_lawyer_or_admin)
 ):
+    """Создать договор - доступно старшим юристам и администраторам"""
     return crud_contract.create(db, obj_in=contract_in.dict())
 
 @router.get("/", response_model=list[Contract])
@@ -20,7 +21,7 @@ def read_contracts(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)  # Все авторизованные могут читать
+    current_user = Depends(get_current_user)
 ):
     """Получить список договоров - доступно всем авторизованным пользователям"""
     return crud_contract.get_multi(db, skip=skip, limit=limit)
@@ -29,8 +30,9 @@ def read_contracts(
 def read_contract(
     contract_id: int,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)  # Все авторизованные могут читать
+    current_user = Depends(get_current_user)
 ):
+    """Получить договор по ID - доступно всем авторизованным пользователям"""
     db_contract = crud_contract.get(db, id=contract_id)
     if not db_contract:
         raise HTTPException(status_code=404, detail="Contract not found")
@@ -41,8 +43,9 @@ def update_contract(
     contract_id: int,
     contract_in: ContractCreate,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_admin_user)
+    current_user = Depends(get_current_senior_lawyer_or_admin)
 ):
+    """Обновить договор - доступно старшим юристам и администраторам"""
     db_contract = crud_contract.get(db, id=contract_id)
     if not db_contract:
         raise HTTPException(status_code=404, detail="Contract not found")
@@ -52,8 +55,9 @@ def update_contract(
 def delete_contract(
     contract_id: int,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_admin_user)
+    current_user = Depends(get_current_senior_lawyer_or_admin)
 ):
+    """Удалить договор - доступно старшим юристам и администраторам"""
     db_contract = crud_contract.get(db, id=contract_id)
     if not db_contract:
         raise HTTPException(status_code=404, detail="Contract not found")

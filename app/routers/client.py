@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.crud.client import client as crud_client
 from app.schemas.client import Client, ClientCreate
-from app.utils.auth import get_current_admin_user, get_current_user
+from app.utils.auth import get_current_user, get_current_senior_lawyer_or_admin
 
 router = APIRouter(prefix="/clients", tags=["clients"])
 
@@ -11,8 +11,9 @@ router = APIRouter(prefix="/clients", tags=["clients"])
 def create_client(
     client_in: ClientCreate,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_admin_user)
+    current_user = Depends(get_current_senior_lawyer_or_admin)
 ):
+    """Создать клиента - доступно старшим юристам и администраторам"""
     return crud_client.create(db, obj_in=client_in.dict())
 
 @router.get("/", response_model=list[Client])
@@ -20,7 +21,7 @@ def read_clients(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)  # Все авторизованные могут читать
+    current_user = Depends(get_current_user)
 ):
     """Получить список клиентов - доступно всем авторизованным пользователям"""
     clients = crud_client.get_multi(db, skip=skip, limit=limit)
@@ -30,8 +31,9 @@ def read_clients(
 def read_client(
     client_id: int,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)  # Все авторизованные могут читать
+    current_user = Depends(get_current_user)
 ):
+    """Получить клиента по ID - доступно всем авторизованным пользователям"""
     db_client = crud_client.get(db, id=client_id)
     if not db_client:
         raise HTTPException(status_code=404, detail="Client not found")
@@ -42,8 +44,9 @@ def update_client(
     client_id: int,
     client_in: ClientCreate,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_admin_user)
+    current_user = Depends(get_current_senior_lawyer_or_admin)
 ):
+    """Обновить клиента - доступно старшим юристам и администраторам"""
     db_client = crud_client.get(db, id=client_id)
     if not db_client:
         raise HTTPException(status_code=404, detail="Client not found")
@@ -53,8 +56,9 @@ def update_client(
 def delete_client(
     client_id: int,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_admin_user)
+    current_user = Depends(get_current_senior_lawyer_or_admin)
 ):
+    """Удалить клиента - доступно старшим юристам и администраторам"""
     db_client = crud_client.get(db, id=client_id)
     if not db_client:
         raise HTTPException(status_code=404, detail="Client not found")

@@ -7,7 +7,7 @@ class EmployeeBase(BaseSchema):
     role: str  # "lawyer", "senior_lawyer", "admin"
 
 class EmployeeCreate(EmployeeBase):
-    password: str
+    password: Optional[str] = None  # Пароль опционален при обновлении
 
 class Employee(EmployeeBase):
     id: int

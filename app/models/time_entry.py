@@ -3,9 +3,11 @@ from sqlalchemy.orm import relationship
 from .base import BaseModel
 import enum
 
+
 class TimeEntryStatus(str, enum.Enum):
     draft = "draft"
     approved = "approved"
+
 
 class TimeEntry(BaseModel):
     __tablename__ = "time_entries"
@@ -14,13 +16,22 @@ class TimeEntry(BaseModel):
     matter_id = Column(Integer, ForeignKey("matters.id"), nullable=False)
     rate_id = Column(Integer, ForeignKey("rates.id"), nullable=True)
     activity_type_id = Column(Integer, ForeignKey("activity_types.id"), nullable=False)
-    
+
     hours = Column(Float, nullable=False)
     description = Column(Text)
     date = Column(Date, nullable=False)
     status = Column(Enum(TimeEntryStatus), default=TimeEntryStatus.draft)
     google_event_id = Column(String, nullable=True)  # ID события в Google Calendar
 
-    # Строковая ссылка
+    # Связи
     employee = relationship("Employee", back_populates="time_entries")
     matter = relationship("Matter", back_populates="time_entries")
+    rate = relationship("Rate", lazy="joined")
+    activity_type = relationship("ActivityType", lazy="joined")
+
+    @property
+    def rate_value(self) -> float | None:
+        """
+        Удобное поле только для чтения, чтобы фронтенд мог получать сумму ставки.
+        """
+        return self.rate.value if self.rate is not None else None

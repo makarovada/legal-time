@@ -243,3 +243,36 @@ def get_google_oauth_flow(redirect_uri: str) -> Flow:
     )
     return flow
 
+
+def get_calendar_events(employee, start_date: Optional[datetime] = None, end_date: Optional[datetime] = None, max_results: int = 100) -> list:
+    """Получить события из Google Calendar за указанный период"""
+    service = get_calendar_service(employee)
+    if not service:
+        return []
+    
+    calendar_id = employee.google_calendar_id or 'primary'
+    
+    # По умолчанию получаем события за последние 30 дней и следующие 30 дней
+    if not start_date:
+        start_date = datetime.utcnow() - timedelta(days=30)
+    if not end_date:
+        end_date = datetime.utcnow() + timedelta(days=30)
+    
+    time_min = start_date.isoformat() + 'Z'
+    time_max = end_date.isoformat() + 'Z'
+    
+    try:
+        events_result = service.events().list(
+            calendarId=calendar_id,
+            timeMin=time_min,
+            timeMax=time_max,
+            maxResults=max_results,
+            singleEvents=True,
+            orderBy='startTime'
+        ).execute()
+        
+        return events_result.get('items', [])
+    except HttpError as e:
+        print(f"Error fetching calendar events: {e}")
+        return []
+

@@ -198,21 +198,42 @@ const Dashboard = () => {
                 <p className="text-sm text-gray-700">
                   Ваш Google Calendar подключен. Создан отдельный календарь "LegalTime" для ваших записей времени.
                 </p>
-                <button
-                  onClick={async () => {
-                    try {
-                      const response = await api.post('/time-entries/sync-to-calendar')
-                      alert(`Синхронизация завершена!\nСинхронизировано: ${response.data.synced}\nОшибок: ${response.data.failed}`)
-                    } catch (error) {
-                      console.error('Error syncing entries:', error)
-                      alert('Ошибка при синхронизации: ' + (error.response?.data?.detail || error.message))
-                    }
-                  }}
-                  className="flex items-center space-x-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors text-sm font-medium"
-                >
-                  <RefreshCw size={16} />
-                  <span>Синхронизировать существующие записи</span>
-                </button>
+                <div className="flex flex-col space-y-2">
+                  <button
+                    onClick={async () => {
+                      try {
+                        const response = await api.post('/time-entries/sync-to-calendar')
+                        alert(`Синхронизация завершена!\nСинхронизировано: ${response.data.synced}\nОшибок: ${response.data.failed}`)
+                        fetchDashboardData()
+                      } catch (error) {
+                        console.error('Error syncing entries:', error)
+                        alert('Ошибка при синхронизации: ' + (error.response?.data?.detail || error.message))
+                      }
+                    }}
+                    className="flex items-center space-x-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors text-sm font-medium"
+                  >
+                    <RefreshCw size={16} />
+                    <span>Синхронизировать в календарь</span>
+                  </button>
+                  <button
+                    onClick={async () => {
+                      if (window.confirm('Импортировать события из Google Calendar в таймшиты? Будут созданы новые записи для событий, которых еще нет в системе.')) {
+                        try {
+                          const response = await api.post('/time-entries/sync-from-calendar?days_back=30&days_forward=30')
+                          alert(`Импорт завершен!\nСоздано: ${response.data.created}\nПропущено: ${response.data.skipped}\nОшибок: ${response.data.failed}`)
+                          fetchDashboardData()
+                        } catch (error) {
+                          console.error('Error syncing from calendar:', error)
+                          alert('Ошибка при импорте: ' + (error.response?.data?.detail || error.message))
+                        }
+                      }
+                    }}
+                    className="flex items-center space-x-2 px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors text-sm font-medium"
+                  >
+                    <Calendar size={16} />
+                    <span>Импортировать из календаря</span>
+                  </button>
+                </div>
               </div>
             )}
           </div>

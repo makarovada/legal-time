@@ -590,3 +590,151 @@ def get_calendar_events(
             status_code=500,
             detail=f"Failed to fetch calendar events: {str(e)}"
         )
+
+
+@router.post("/sync-from-calendar", response_model=dict)
+def sync_from_calendar(
+    days_back: int = 30,
+    days_forward: int = 30,
+    db: Session = Depends(get_db),
+    current_user: Employee = Depends(get_current_user)
+):
+    """
+    Синхронизировать события из Google Calendar в таймшиты.
+    Создает новые таймшиты для событий, которых еще нет в системе.
+    """
+    from app.utils.google_calendar import get_calendar_events
+    from datetime import datetime, timedelta, date
+    import re
+    
+    if not current_user.google_token_encrypted:
+        raise HTTPException(
+            status_code=400,
+            detail="Google Calendar not connected. Please connect your Google account first."
+        )
+    
+    # Получаем события из календаря
+    start_date = datetime.utcnow() - timedelta(days=days_back)
+    end_date = datetime.utcnow() + timedelta(days=days_forward)
+    events = get_calendar_events(current_user, start_date, end_date, max_results=500)
+    
+    if not events:
+        return {
+            "message": "No events found in calendar",
+            "created": 0,
+            "skipped": 0,
+            "failed": 0,
+            "total": 0
+        }
+    
+    # Получаем дефолтный тип активности (первый доступный или "Консультация")
+    default_activity_type = db.query(ActivityType).filter(ActivityType.name == "Консультация").first()
+    if not default_activity_type:
+        default_activity_type = db.query(ActivityType).first()
+    if not default_activity_type:
+        raise HTTPException(
+            status_code=500,
+            detail="No activity types found in database"
+        )
+    
+    created_count = 0
+    skipped_count = 0
+    failed_count = 0
+    
+    for event in events:
+        event_id = event.get('id')
+        if not event_id:
+            continue
+        
+        # Проверяем, есть ли уже таймшит с таким google_event_id
+        existing_entry = db.query(TimeEntryModel).filter(
+            TimeEntryModel.google_event_id == event_id
+        ).first()
+        
+        if existing_entry:
+            skipped_count += 1
+            continue
+        
+        try:
+            # Парсим данные события
+            summary = event.get('summary', '')
+            description = event.get('description', '')
+            start = event.get('start', {})
+            end = event.get('end', {})
+            
+            # Извлекаем дату и время
+            start_datetime_str = start.get('dateTime') or start.get('date')
+            end_datetime_str = end.get('dateTime') or end.get('date')
+            
+            if not start_datetime_str or not end_datetime_str:
+                failed_count += 1
+                continue
+            
+            # Парсим дату и время
+            if 'T' in start_datetime_str:
+                start_dt = datetime.fromisoformat(start_datetime_str.replace('Z', '+00:00'))
+                end_dt = datetime.fromisoformat(end_datetime_str.replace('Z', '+00:00'))
+                entry_date = start_dt.date()
+                hours = (end_dt - start_dt).total_seconds() / 3600.0
+            else:
+                # Если только дата без времени
+                start_dt = datetime.fromisoformat(start_datetime_str)
+                end_dt = datetime.fromisoformat(end_datetime_str)
+                entry_date = start_dt.date()
+                hours = 1.0  # По умолчанию 1 час для событий без времени
+            
+            # Пытаемся найти дело по коду из названия события
+            # Формат: "КОД - Название" или просто "КОД"
+            matter = None
+            if summary:
+                # Пытаемся найти код дела в начале названия
+                match = re.match(r'^([A-Z0-9-]+)', summary.strip())
+                if match:
+                    matter_code = match.group(1)
+                    matter = db.query(Matter).filter(Matter.code == matter_code).first()
+                
+                # Если не нашли по коду, пытаемся найти по части названия
+                if not matter:
+                    for m in db.query(Matter).all():
+                        if m.code in summary or m.name in summary:
+                            matter = m
+                            break
+            
+            # Если дело не найдено, пропускаем событие
+            if not matter:
+                failed_count += 1
+                continue
+            
+            # Определяем ставку
+            rate = _resolve_rate(db, employee_id=current_user.id, matter_id=matter.id)
+            
+            # Создаем таймшит
+            new_entry = TimeEntryModel(
+                employee_id=current_user.id,
+                matter_id=matter.id,
+                activity_type_id=default_activity_type.id,
+                rate_id=rate.id if rate else None,
+                hours=round(hours, 2),
+                description=description or summary,
+                date=entry_date,
+                status="draft",
+                google_event_id=event_id
+            )
+            
+            db.add(new_entry)
+            created_count += 1
+            
+        except Exception as e:
+            print(f"Failed to create time entry from event {event.get('id')}: {e}")
+            failed_count += 1
+            continue
+    
+    db.commit()
+    
+    return {
+        "message": "Sync from calendar completed",
+        "created": created_count,
+        "skipped": skipped_count,
+        "failed": failed_count,
+        "total": len(events)
+    }
